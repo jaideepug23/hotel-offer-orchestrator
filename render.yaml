@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: hotel-offer-orchestrator
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.demo
+    healthCheckPath: /live
+    envVars:
+      - key: LOG_LEVEL
+        value: info
+      - key: OFFER_TTL_SECONDS
+        value: "300"
+      - key: TEMPORAL_TASK_QUEUE
+        value: hotel-offers

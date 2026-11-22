@@ -1,0 +1,56 @@
+{
+  "info": {
+    "name": "Hotel Offer Orchestrator — optional outage tests",
+    "description": "Run ONLY after enabling SUPPLIER_B_DOWN=true. See README. These deliberately expect HTTP 503.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Comparison fails closed",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 503', () => pm.response.to.have.status(503));",
+              "pm.test('Clear error', () => pm.expect(pm.response.json().error.code).to.eql('COMPARISON_UNAVAILABLE'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health identifies Supplier B",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 503', () => pm.response.to.have.status(503));",
+              "pm.test('B down', () => pm.expect(pm.response.json().checks.supplierB.status).to.eql('down'));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

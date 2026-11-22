@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Compare hotel offers with durable Temporal workflows and Redis price filtering.">
+  <title>Staywise · Hotel Offer Orchestrator</title>
+  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/"><span class="brand-mark">s</span><span>staywise<span class="brand-dot">.</span></span></a>
+    <div class="workspace-label">OFFER INTELLIGENCE</div>
+    <a href="#search" class="nav-link active"><span>▦</span> Hotel comparison</a>
+    <a href="/openapi.json" class="nav-link" target="_blank" rel="noreferrer"><span>⌘</span> API specification <span class="external">↗</span></a>
+    <div class="sidebar-bottom"><span class="small-dot"></span> Built with Temporal + Redis<p>Two suppliers. One reliable answer.</p></div>
+  </aside>
+  <div class="main-shell">
+    <header class="topbar"><div><span class="muted">Workspace</span><span class="slash">/</span><strong>Hotel comparison</strong></div><div id="system-status" class="status checking"><span class="small-dot"></span> Checking services</div></header>
+    <main>
+      <section class="page-heading"><div><div class="eyebrow">THE BEST OFFER, VERIFIED</div><h1>Find the better stay.</h1><p>Compare both suppliers in one search. Pay the lowest listed price.</p></div><div class="engine-tag"><span class="engine-icon">⇄</span><div>Durable by design<small>Temporal workflows · Redis filtering</small></div></div></section>
+      <section class="search-panel" id="search">
+        <form id="search-form">
+          <div class="form-field city-field"><label for="city">Destination</label><div class="input-wrap"><span>⌖</span><input id="city" name="city" value="delhi" list="cities" maxlength="80" required autocomplete="off" aria-describedby="city-help"><datalist id="cities"><option value="delhi"><option value="mumbai"><option value="bengaluru"></datalist></div></div>
+          <div class="form-field"><label for="min-price">Minimum price</label><div class="input-wrap"><span>₹</span><input id="min-price" type="number" min="0" max="1000000000" step="0.01" placeholder="No minimum"></div></div>
+          <div class="form-field"><label for="max-price">Maximum price</label><div class="input-wrap"><span>₹</span><input id="max-price" type="number" min="0" max="1000000000" step="0.01" placeholder="No maximum"></div></div>
+          <button id="search-button" type="submit">Compare offers <span>→</span></button>
+        </form>
+        <div class="search-foot"><span id="city-help">Try Delhi, Mumbai, or Bengaluru · prices in INR</span><div class="presets"><span>Quick filter</span><button type="button" data-max="5000">Under ₹5,000</button><button type="button" data-min="5340" data-max="5900">₹5,340–5,900</button><button type="button" id="clear-filters">Clear</button></div></div>
+      </section>
+      <div id="notice" class="notice hidden" role="alert"></div>
+      <section class="metrics" aria-label="Search summary">
+        <div class="metric"><div>Supplier listings <span class="metric-symbol">⊞</span></div><strong id="listing-count">—</strong><small>Across both suppliers, before deduplication</small></div>
+        <div class="metric"><div>Unique hotels <span class="metric-symbol">◇</span></div><strong id="unique-count">—</strong><small>Normalized names, one winning offer each</small></div>
+        <div class="metric"><div>Matching offers <span class="metric-symbol">≡</span></div><strong id="match-count">—</strong><small>Price bounds applied inside Redis</small></div>
+        <div class="metric accent"><div>Lowest matching price <span class="metric-symbol">↘</span></div><strong id="lowest-price">—</strong><small id="lowest-hotel">Run a comparison to find your stay</small></div>
+      </section>
+      <section class="content-grid">
+        <div class="results-panel">
+          <div class="panel-heading"><div><h2>Best available offers</h2><p id="results-caption">Ready when you are</p></div><span class="sort-badge">Price: low to high ↓</span></div>
+          <div id="results" aria-live="polite"><div class="empty-state"><span class="empty-icon">⌖</span><h3>Your next stay starts here</h3><p>Search a destination to compare live mock-supplier offers.</p></div></div>
+          <div class="results-footer"><span class="small-dot"></span> Lowest price wins. Equal-price ties consistently prefer Supplier A.</div>
+        </div>
+        <aside class="inspector">
+          <div class="panel-heading"><div><h2>Behind the comparison</h2><p>Real services. Traceable results.</p></div><span class="live-tag">LIVE</span></div>
+          <div class="pipeline"><div class="pipeline-step"><span class="step-number">1</span><div><strong>Fetch in parallel</strong><p>Supplier A + Supplier B</p></div><span class="step-end">⇄</span></div><div class="pipeline-step"><span class="step-number">2</span><div><strong>Select the best offer</strong><p>Normalize names · compare prices</p></div></div><div class="pipeline-step"><span class="step-number">3</span><div><strong>Store & filter in Redis</strong><p>Atomic sorted-set price query</p></div></div></div>
+          <div class="dependency-section"><div class="section-label">DEPENDENCY HEALTH <button id="refresh-health" type="button" aria-label="Refresh health">↻</button></div><div id="health-list"><p class="muted">Checking dependencies…</p></div></div>
+          <div class="trace-section"><div class="section-label">LAST WORKFLOW</div><code id="workflow-id">No search executed yet</code><div id="search-timing" class="trace-timing">Each search creates a real Temporal workflow.</div></div>
+        </aside>
+      </section>
+      <section class="api-panel"><div class="panel-heading"><div><h2>Inspect the response</h2><p>The exact API response, ready to copy.</p></div><button id="copy-response" class="outline-button" type="button" disabled>Copy JSON</button></div><div class="request-line"><span>GET</span><code id="request-url">/api/hotels?city=delhi</code><span id="http-status" class="http-status">Not requested</span></div><pre id="json-response">Run a comparison to inspect the response.</pre></section>
+      <footer><span>Staywise · Hotel Offer Orchestrator</span><span>Deterministic mock inventory · No booking or payment</span></footer>
+    </main>
+  </div>
+</body>
+</html>

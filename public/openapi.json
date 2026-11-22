@@ -1,0 +1,448 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Hotel Offer Orchestrator",
+    "version": "1.0.0",
+    "description": "Parallel supplier comparison orchestrated by Temporal. All winning offers are saved in a Redis sorted set; inclusive price filtering executes in Redis. Prices are INR. Suppliers are deterministic mocks."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current host"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Hotels"
+    },
+    {
+      "name": "Suppliers"
+    },
+    {
+      "name": "Operations"
+    }
+  ],
+  "paths": {
+    "/api/hotels": {
+      "get": {
+        "tags": [
+          "Hotels"
+        ],
+        "summary": "Compare suppliers and return the best offer per hotel",
+        "operationId": "getBestHotelOffers",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "example": "delhi",
+            "description": "Case-insensitive city name. Supported fixtures: delhi, mumbai, bengaluru. Other cities return []."
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000
+            },
+            "description": "Inclusive lower bound, at most two decimal places."
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1000000000
+            },
+            "description": "Inclusive upper bound, at most two decimal places. Must be >= minPrice."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "De-duplicated winners, sorted by price ascending. Empty array when no offers match.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HotelOffer"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Workflow-Id": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Temporal workflow execution ID"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid, duplicate, unknown, or contradictory query parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Concurrent request admission limit exceeded; retry after 2 seconds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A supplier, worker, Temporal, or Redis could not complete comparison",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Check Redis, Temporal, recent worker polling and both suppliers",
+        "responses": {
+          "200": {
+            "description": "All dependencies healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "At least one dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/live": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Process liveness, independent of dependencies",
+        "responses": {
+          "200": {
+            "description": "HTTP process is alive"
+          }
+        }
+      }
+    },
+    "/supplierA/hotels": {
+      "get": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Mock Supplier A inventory",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "delhi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Static inventory, optionally filtered by city",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierHotel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid city",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Supplier downtime simulation enabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supplierA/health": {
+      "get": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Mock Supplier A health",
+        "responses": {
+          "200": {
+            "description": "Available"
+          },
+          "503": {
+            "description": "Downtime simulation enabled"
+          }
+        }
+      }
+    },
+    "/supplierB/hotels": {
+      "get": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Mock Supplier B inventory",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "delhi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Static inventory, optionally filtered by city",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierHotel"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid city",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Supplier downtime simulation enabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/supplierB/health": {
+      "get": {
+        "tags": [
+          "Suppliers"
+        ],
+        "summary": "Mock Supplier B health",
+        "responses": {
+          "200": {
+            "description": "Available"
+          },
+          "503": {
+            "description": "Downtime simulation enabled"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HotelOffer": {
+        "type": "object",
+        "required": [
+          "name",
+          "price",
+          "supplier",
+          "commissionPct"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Holtin"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "example": 5340
+          },
+          "supplier": {
+            "type": "string",
+            "enum": [
+              "Supplier A",
+              "Supplier B"
+            ]
+          },
+          "commissionPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 20
+          }
+        }
+      },
+      "SupplierHotel": {
+        "type": "object",
+        "required": [
+          "hotelId",
+          "name",
+          "price",
+          "city",
+          "commissionPct"
+        ],
+        "properties": {
+          "hotelId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "city": {
+            "type": "string"
+          },
+          "commissionPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "requestId": {
+                "type": "string"
+              },
+              "workflowId": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "degraded"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "up",
+                    "down"
+                  ]
+                },
+                "latencyMs": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

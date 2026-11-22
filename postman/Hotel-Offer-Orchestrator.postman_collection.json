@@ -1,0 +1,236 @@
+{
+  "info": {
+    "name": "Hotel Offer Orchestrator",
+    "description": "Run with the healthy stack. Set baseUrl to localhost or your deployed service. The optional outage folder expects SUPPLIER_B_DOWN=true.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Delhi — best offers and overlaps",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi",
+        "description": "Each successful request executes a real Temporal workflow."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('5 unique hotels', () => pm.expect(data.length).to.eql(5));",
+              "pm.test('Holtin from B at 5340', () => pm.expect(data.find(h => h.name === 'Holtin')).to.deep.equal({name:'Holtin',price:5340,supplier:'Supplier B',commissionPct:20}));",
+              "pm.test('Radison from A at 5900', () => pm.expect(data.find(h => h.name === 'Radison').price).to.eql(5900));",
+              "pm.test('Traceable workflow', () => pm.expect(pm.response.headers.get('X-Workflow-Id')).to.match(/^hotel-search-/));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inclusive price bounds",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi&minPrice=5340&maxPrice=5900",
+        "description": "Redis performs inclusive score filtering."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Both boundary prices included', () => pm.expect(pm.response.json().map(h => h.name)).to.deep.equal(['Holtin','Radison']));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Exact-price match",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi&minPrice=5340&maxPrice=5340"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Single exact match', () => pm.expect(pm.response.json().map(h => h.price)).to.deep.equal([5340]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upper bound only",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi&maxPrice=4500"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('2 matching hotels', () => pm.expect(pm.response.json().length).to.eql(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unknown city",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=atlantis"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('Empty list', () => pm.expect(pm.response.json()).to.deep.equal([]));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mumbai",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=mumbai"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('2 unique hotels', () => pm.expect(pm.response.json().length).to.eql(2));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid range",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi&minPrice=6000&maxPrice=5000"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Validation code', () => pm.expect(pm.response.json().error.code).to.eql('INVALID_QUERY'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Duplicate city rejected",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/hotels?city=delhi&city=mumbai"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health — all dependencies",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Healthy', () => pm.response.to.have.status(200));",
+              "pm.test('Both suppliers up', () => { const c=pm.response.json().checks; pm.expect(c.supplierA.status).to.eql('up'); pm.expect(c.supplierB.status).to.eql('up'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Supplier A raw inventory",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/supplierA/hotels?city=delhi"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Supplier B raw inventory",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/supplierB/hotels?city=delhi"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
