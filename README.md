@@ -4,6 +4,12 @@
 
 A working hotel comparison backend and reviewer dashboard built with **Node.js, TypeScript, Express, Temporal, Redis, and Docker Compose**. Every successful search runs a real Temporal workflow, calls both mock suppliers in parallel, chooses the cheapest offer for each normalized hotel name, saves **all** winners in Redis, and applies the requested price bounds **inside Redis**.
 
+**Live demo:** https://hotel-offer-orchestrator-g9vu.onrender.com
+
+**Live API:** https://hotel-offer-orchestrator-g9vu.onrender.com/api/hotels?city=delhi&minPrice=5340&maxPrice=5900
+
+See [verification evidence](docs/VERIFICATION.md) and the [five-minute reviewer walkthrough](docs/REVIEWER-WALKTHROUGH.md). The GitHub repository is private; grant evaluator access before submission.
+
 ## Run the full system
 
 Prerequisites: Docker Engine/Desktop with Compose v2. No Node installation or API keys needed for the containerized application.
