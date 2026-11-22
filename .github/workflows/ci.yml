@@ -28,7 +28,7 @@ jobs:
       - run: npm run test:integration
         env:
           TEST_REDIS_URL: redis://127.0.0.1:6379/15
-      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=moderate
   compose:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -59,3 +59,25 @@ jobs:
       - name: Stop stack
         if: always()
         run: docker compose down -v
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: docker build -f Dockerfile.demo -t hotel-demo .
+      - run: docker run -d --name hotel-demo --memory=512m -p 3000:3000 hotel-demo
+      - run: npm run test:e2e
+      - name: Report memory and process status
+        if: always()
+        run: |
+          docker stats --no-stream hotel-demo
+          docker inspect hotel-demo --format '{{json .State}}'
+          docker logs --tail 100 hotel-demo
+      - name: Stop demo
+        if: always()
+        run: docker stop hotel-demo

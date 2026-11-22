@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Durable hotel offer comparison with Temporal and Redis price filtering",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node dist/bundle-workflows.js",
     "start": "node dist/server.js",
@@ -35,6 +37,6 @@
     "supertest": "^7.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "vitest": "^5.1.1"
   }
 }
